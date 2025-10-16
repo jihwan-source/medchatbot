@@ -1,0 +1,132 @@
+# scenarios/uti.yaml
+# 급성 방광염 (비뇨기 증상) 문진 시나리오
+
+name: "비뇨기 증상 문진"
+initial_question_id: GREETING
+
+nodes:
+  - id: GREETING
+    text: |
+      안녕하세요! OOO 의원 AI 문진 챗봇입니다.
+      '소변볼 때의 불편감'에 대해 몇 가지 질문을 드릴게요.
+      현재 가장 불편한 증상이 아래 중 어떤 것인가요?
+    type: buttons
+    options:
+      - text: "소변볼 때 통증이 있어요"
+        next_id: HPI_CORE_SYMPTOMS
+      - text: "소변을 너무 자주 봐요"
+        next_id: HPI_CORE_SYMPTOMS
+      - text: "기타"
+        next_id: HPI_CORE_SYMPTOMS
+
+  - id: HPI_CORE_SYMPTOMS
+    text: "현재 느끼는 증상을 모두 선택해주세요."
+    type: multiple_choice
+    options:
+      - text: "소변볼 때 찌릿하거나 아파요 (배뇨통)"
+      - text: "소변을 봐도 시원하지 않아요 (잔뇨감)"
+      - text: "화장실을 다녀와도 금방 또 가고 싶어요 (빈뇨)"
+      - text: "소변을 참기 힘들어요 (급박뇨)"
+    next_id: RED_FLAG_CHECK
+
+  - id: RED_FLAG_CHECK
+    text: |
+      ※ 안전한 진료를 위해 가장 중요한 질문입니다.
+      아래 증상 중 하나라도 해당되는 것이 있다면 즉시 알려주세요.
+      1. 38°C 이상의 고열이나 온몸이 떨리는 오한이 있다.
+      2. 옆구리나 등이 뻐근하거나 아프다.
+      3. 속이 심하게 메스껍거나 구토를 했다.
+    type: buttons
+    options:
+      - text: "네, 해당하는 증상이 있어요"
+        next_id: END_EMERGENCY_WARNING
+      - text: "아니요, 모두 괜찮아요"
+        next_id: HPI_HEMATURIA
+
+  - id: HPI_HEMATURIA
+    text: "혹시 소변에서 피가 비치거나, 소변 색이 콜라 색처럼 보이나요?"
+    type: buttons
+    options:
+      - text: "네, 혈뇨가 있어요"
+        next_id: HPI_ONSET
+      - text: "아니요, 괜찮아요"
+        next_id: HPI_ONSET
+
+  - id: HPI_ONSET
+    text: "증상이 언제 처음 시작되었나요?"
+    type: buttons
+    options:
+      - text: "오늘 또는 어제"
+        next_id: GENDER_CHECK
+      - text: "2~3일 전"
+        next_id: GENDER_CHECK
+      - text: "일주일 이상"
+        next_id: GENDER_CHECK
+
+  - id: GENDER_CHECK
+    text: "정확한 문진을 위해 성별을 알려주시겠어요?"
+    type: buttons
+    options:
+      - text: "여성"
+        next_id: FEMALE_PATH_1
+      - text: "남성"
+        next_id: MALE_PATH_1
+
+  # --- 여성 경로 ---
+  - id: FEMALE_PATH_1
+    text: "혹시 질 분비물(냉)이 늘거나 가려움증이 동반되나요? (방광염과 증상이 비슷한 질염 감별 목적)"
+    type: buttons
+    options:
+      - text: "네, 있어요"
+        next_id: FEMALE_PATH_2
+      - text: "아니요, 없어요"
+        next_id: FEMALE_PATH_2
+
+  - id: FEMALE_PATH_2
+    text: "현재 임신 가능성이 있거나, 임신 중이신가요?"
+    type: buttons
+    options:
+      - text: "네"
+        next_id: COMMON_RECURRENCE
+      - text: "아니요 / 해당 없음"
+        next_id: COMMON_RECURRENCE
+
+  # --- 남성 경로 ---
+  - id: MALE_PATH_1
+    text: "남성의 요로 감염은 다른 원인 감별이 중요합니다. 혹시 소변 줄기가 약해지거나, 요도 끝에서 분비물이 나온 적이 있나요?"
+    type: buttons
+    options:
+      - text: "네, 그런 증상이 있어요"
+        next_id: COMMON_RECURRENCE # 공통 질문으로 합류
+      - text: "아니요, 없어요"
+        next_id: COMMON_RECURRENCE # 공통 질문으로 합류
+
+  # --- 공통 질문 (모든 경로가 합류) ---
+  - id: COMMON_RECURRENCE
+    text: "최근 1년 내에 방광염(요로감염)으로 치료받은 적이 있나요?"
+    type: buttons
+    options:
+      - text: "네, 있어요"
+        next_id: COMMON_PMH
+      - text: "아니요, 없어요"
+        next_id: COMMON_PMH
+
+  - id: COMMON_PMH
+    text: "당뇨병, 요로결석을 진단받았거나, 면역력이 저하될 만한 상황이신가요?"
+    type: buttons
+    options:
+      - text: "네, 해당돼요"
+        next_id: CLOSING
+      - text: "아니요, 괜찮아요"
+        next_id: CLOSING
+
+  # --- 마무리 단계 ---
+  - id: CLOSING
+    text: |
+      꼼꼼하게 답변해주셔서 감사합니다. 질문이 모두 끝났습니다.
+      답변 내용은 의사 선생님이 한눈에 파악하실 수 있도록 정리하여 전달하겠습니다.
+    type: final
+
+  - id: END_EMERGENCY_WARNING
+    text: "즉각적인 의학적 확인이 필요할 수 있습니다. 문진을 중단하고 바로 의료진의 도움을 받으세요."
+    type: final

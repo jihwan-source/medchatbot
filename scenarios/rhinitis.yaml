@@ -1,0 +1,93 @@
+# scenarios/rhinitis.yaml
+# 비염 문진 시나리오
+
+# 챗봇의 이름과 시작 질문 ID
+name: "비염 문진"
+initial_question_id: GREETING
+
+# 각 질문 단계(node)들의 목록
+nodes:
+  - id: GREETING
+    text: |
+      안녕하세요! OOO 의원 AI 문진 챗봇입니다.
+      현재 가장 불편한 증상이 '재채기, 콧물, 코막힘'과 관련이 있으신가요?
+    type: buttons
+    options:
+      - text: "네, 맞아요"
+        next_id: HPI_CORE_SYMPTOMS
+      - text: "아니요, 다른 증상이에요"
+        next_id: END_OTHER_SYMPTOM
+
+  - id: HPI_CORE_SYMPTOMS
+    text: "어떤 증상이 있는지 모두 선택해주세요."
+    type: buttons
+    options:
+      - text: "재채기가 계속 나요"
+      - text: "물처럼 맑은 콧물이 흘러요"
+      - text: "코가 꽉 막혀요"
+      - text: "코나 눈이 가려워요"
+    next_id: HPI_DIFFERENTIAL_FEVER
+
+  - id: HPI_DIFFERENTIAL_FEVER
+    text: "혹시 열이 나거나 몸살 기운이 있나요?"
+    type: buttons
+    options:
+      - text: "네, 열과 몸살 기운이 있어요"
+        next_id: HPI_DIFFERENTIAL_DISCHARGE
+      - text: "아니요, 그런 증상은 없어요"
+        next_id: HPI_DIFFERENTIAL_DISCHARGE
+
+  - id: HPI_DIFFERENTIAL_DISCHARGE
+    text: "콧물이 누렇거나 녹색인가요? 그리고 콧물이 목뒤로 넘어가는 느낌이 있나요?"
+    type: buttons
+    options:
+      - text: "네, 콧물 색이 진해요"
+        next_id: HPI_CLASSIFY_DURATION
+      - text: "아니요, 맑은 콧물이에요"
+        next_id: HPI_CLASSIFY_DURATION
+
+  - id: HPI_CLASSIFY_DURATION
+    text: "증상이 얼마나 오래되었나요?"
+    type: buttons
+    options:
+      - text: "일주일 이내"
+        next_id: HPI_CLASSIFY_SEVERITY
+      - text: "4주 이내"
+        next_id: HPI_CLASSIFY_SEVERITY
+      - text: "4주 이상 지속됨"
+        next_id: HPI_CLASSIFY_SEVERITY
+
+  - id: HPI_CLASSIFY_SEVERITY
+    text: "증상 때문에 잠을 설치거나, 업무/학업에 집중하기 어려운 등 일상생활에 지장이 있나요?"
+    type: buttons
+    options:
+      - text: "네, 지장이 있어요"
+        next_id: PMH_TRIGGERS
+      - text: "아니요, 괜찮아요"
+        next_id: PMH_TRIGGERS
+  
+  - id: PMH_TRIGGERS
+    text: "혹시 특정 계절(봄, 가을 등)이나 특정 환경(먼지, 동물 털 등)에서 증상이 심해지나요?"
+    type: buttons
+    options:
+      - text: "네, 그런 것 같아요"
+        next_id: PMH_HISTORY
+      - text: "아니요, 잘 모르겠어요"
+        next_id: PMH_HISTORY
+
+  - id: PMH_HISTORY
+    text: "이전에 병원에서 '알레르기 비염'이나 '천식', '아토피 피부염'을 진단받은 적이 있나요?"
+    type: buttons
+    options:
+      - text: "네, 있어요"
+        next_id: CLOSING
+      - text: "아니요, 없어요"
+        next_id: CLOSING
+
+  - id: CLOSING
+    text: "감사합니다. 질문이 모두 끝났습니다. 답변해주신 내용은 의사 선생님께 잘 전달하여 진료에 도움이 되도록 하겠습니다."
+    type: final
+
+  - id: END_OTHER_SYMPTOM
+    text: "알겠습니다. 이 챗봇은 재채기, 콧물, 코막힘 관련 문진을 돕고 있습니다. 다른 증상은 의사 선생님께 직접 말씀해주세요."
+    type: final

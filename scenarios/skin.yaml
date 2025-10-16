@@ -1,0 +1,162 @@
+# scenarios/skin.yaml
+# 피부 질환 (두드러기 / 접촉피부염) 문진 시나리오
+
+name: "피부 증상 문진"
+initial_question_id: GREETING
+
+nodes:
+  - id: GREETING
+    text: |
+      안녕하세요! OOO 의원 AI 문진 챗봇입니다.
+      '피부 문제'에 대해 몇 가지 질문을 드릴게요.
+      현재 가장 불편한 증상이 어떤 것인가요?
+    type: buttons
+    options:
+      - text: "갑자기 피부가 부풀어 오르며 가려워요 (두드러기)"
+        next_id: RED_FLAG_CHECK
+        set_context: { path: "URTICARIA" }
+      - text: "특정 부위가 붉어지고 가려워요 (피부염/습진)"
+        next_id: RED_FLAG_CHECK
+        set_context: { path: "DERMATITIS" }
+      - text: "기타 피부 발진"
+        next_id: RED_FLAG_CHECK
+        set_context: { path: "OTHER" }
+
+  - id: RED_FLAG_CHECK
+    text: |
+      ※ 안전한 진료를 위해 가장 중요한 질문입니다.
+      피부 증상과 함께 아래 증상 중 하나라도 해당되는 것이 있다면 즉시 알려주세요.
+      1. 숨이 차거나 쌕쌕거리는 소리가 난다.
+      2. 입술, 혀, 목구멍이 붓는 느낌이 든다.
+      3. 속이 울렁거리거나, 배가 아프거나, 구토를 한다.
+      4. 어지럽거나 쓰러질 것 같다.
+      5. 열이 나면서 피부가 아프거나 물집이 생긴다.
+    type: buttons
+    options:
+      - text: "네, 해당하는 증상이 있어요"
+        next_id: END_EMERGENCY_WARNING
+      - text: "아니요, 모두 괜찮아요"
+        next_id: COMMON_ONSET
+
+  # --- 공통 질문 ---
+  - id: COMMON_ONSET
+    text: "피부 증상이 처음 나타난 것은 언제인가요?"
+    type: buttons
+    options:
+      - text: "수 시간 ~ 수일 이내"
+        next_id: COMMON_ITCHING
+      - text: "1~2주 사이"
+        next_id: COMMON_ITCHING
+      - text: "수 주 이상"
+        next_id: COMMON_ITCHING
+
+  - id: COMMON_ITCHING
+    text: "가려움증이 있나요? 있다면 어느 정도인가요?"
+    type: buttons
+    options:
+      - text: "가려움증 없음"
+        next_id: COMMON_LOCATION
+      - text: "조금 가려움"
+        next_id: COMMON_LOCATION
+      - text: "일상생활에 지장을 줄 정도로 심하게 가려움"
+        next_id: COMMON_LOCATION
+
+  - id: COMMON_LOCATION
+    text: "피부 증상이 나타난 부위는 어디인가요? (모두 선택 가능)"
+    type: multiple_choice
+    options:
+      - text: "얼굴/두피"
+      - text: "목"
+      - text: "팔/다리"
+      - text: "손/발"
+      - text: "몸통(가슴/배/등)"
+      - text: "전신"
+    next_id: PATH_ROUTER # 경로 분기점으로 이동
+
+  - id: PATH_ROUTER
+    type: condition_router
+    check_context: "path"
+    routes:
+      - value: "URTICARIA"
+        next_id: URTICARIA_PATH_1
+      - value: "DERMATITIS"
+        next_id: DERMATITIS_PATH_1
+      - value: "OTHER"
+        next_id: COMMON_PMH_ALLERGY # 기타 경로는 바로 과거력으로
+
+  # --- Urticaria (두드러기) 경로 ---
+  - id: URTICARIA_PATH_1
+    text: "증상이 생기기 24시간 이내에 평소에 잘 먹지 않던 음식(해산물, 견과류, 과일 등)이나 약(진통제, 항생제 등)을 먹은 적이 있나요?"
+    type: buttons
+    options:
+      - text: "네, 있어요"
+        next_id: URTICARIA_PATH_2
+      - text: "아니요, 없어요"
+        next_id: URTICARIA_PATH_2
+
+  - id: URTICARIA_PATH_2
+    text: "혹시 벌레에 물리거나 쏘인 적이 있나요?"
+    type: buttons
+    options:
+      - text: "네, 있어요"
+        next_id: URTICARIA_PATH_3
+      - text: "아니요, 없어요"
+        next_id: URTICARIA_PATH_3
+
+  - id: URTICARIA_PATH_3
+    text: "각각의 피부 발진이 생겼다가 몇 시간 안에 흔적도 없이 사라지고, 다른 곳에 다시 생기는 양상을 반복하나요?"
+    type: buttons
+    options:
+      - text: "네, 그렇습니다"
+        next_id: COMMON_PMH_ALLERGY # 공통 질문으로 합류
+      - text: "아니요, 한곳에 계속 있습니다"
+        next_id: COMMON_PMH_ALLERGY # 공통 질문으로 합류
+
+  # --- Dermatitis (피부염/습진) 경로 ---
+  - id: DERMATITIS_PATH_1
+    text: "증상이 나타난 부위에 새로운 물질이 닿은 적이 있나요? (예: 새로운 화장품, 금속 액세서리, 옷, 연고, 세제 등)"
+    type: buttons
+    options:
+      - text: "네, 있어요"
+        next_id: DERMATITIS_PATH_2
+      - text: "아니요, 없어요"
+        next_id: DERMATITIS_PATH_2
+
+  - id: DERMATITIS_PATH_2
+    text: "피부가 붉어지면서 진물이 나거나, 각질이 일어나나요?"
+    type: buttons
+    options:
+      - text: "네, 그렇습니다"
+        next_id: COMMON_PMH_ALLERGY # 공통 질문으로 합류
+      - text: "아니요, 그냥 붉기만 합니다"
+        next_id: COMMON_PMH_ALLERGY # 공통 질문으로 합류
+
+  # --- 공통 과거력 질문 ---
+  - id: COMMON_PMH_ALLERGY
+    text: "이전에 두드러기, 아토피 피부염, 알레르기 비염, 천식을 진단받은 적이 있나요?"
+    type: buttons
+    options:
+      - text: "네, 있어요"
+        next_id: COMMON_PMH_KNOWN_ALLERGY
+      - text: "아니요, 없어요"
+        next_id: COMMON_PMH_KNOWN_ALLERGY
+
+  - id: COMMON_PMH_KNOWN_ALLERGY
+    text: "특정 음식이나 약물에 알레르기가 있다고 알고 있는 것이 있나요?"
+    type: buttons
+    options:
+      - text: "네, 있어요"
+        next_id: CLOSING
+      - text: "아니요, 없어요"
+        next_id: CLOSING
+
+  # --- 마무리 단계 ---
+  - id: CLOSING
+    text: |
+      꼼꼼하게 답변해주셔서 감사합니다. 혹시 피부 증상을 찍은 사진이 있다면, 잠시 후 진료실에서 의사 선생님께 보여주시면 진단에 큰 도움이 됩니다.
+      답변 내용은 의사 선생님이 한눈에 파악하실 수 있도록 정리하여 전달하겠습니다.
+    type: final
+
+  - id: END_EMERGENCY_WARNING
+    text: "아나필락시스 등 응급 상황일 수 있습니다. 즉시 119에 연락하거나 가까운 응급실을 방문하세요. 문진을 중단합니다."
+    type: final
