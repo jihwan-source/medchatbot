@@ -6,7 +6,7 @@ import uuid
 # --------------------------------------------------------------------------
 # TODO: 여기에 ngrok으로 생성된 FastAPI 서버의 공개 URL을 붙여넣어 주세요.
 # 예: API_URL = "https://1a2b-3c4d-5e6f.ngrok-free.app/chat"
-API_URL = "https://af3979dc6406.ngrok-free.app/chat"
+API_URL = "https://2b0d6ddc88e4.ngrok-free.app/chat"
 # --------------------------------------------------------------------------
 
 
