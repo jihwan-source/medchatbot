@@ -2,12 +2,12 @@
 # [테스트용] Gemini API 사용량 및 비용 추적기
 import traceback  # 상세한 오류 로깅을 위해 추가
 
-# 참고: Gemini 1.5 Flash 모델의 가격 (2024년 5월 기준)
-# - 입력: $0.000125 / 1K tokens
-# - 출력: $0.000375 / 1K tokens
+# 참고: Gemini 2.5 Flash 모델의 가격 (사용자 제공 정보)
+# - 입력: $0.30 / 1M tokens -> $0.00030 / 1K tokens
+# - 출력: $2.50 / 1M tokens -> $0.00250 / 1K tokens
 # ※ 실제 비용은 Google Cloud의 공식 가격 정책을 항상 확인하세요.
-PRICE_INPUT_PER_1K_TOKENS = 0.000125
-PRICE_OUTPUT_PER_1K_TOKENS = 0.000375
+PRICE_INPUT_PER_1K_TOKENS = 0.00030
+PRICE_OUTPUT_PER_1K_TOKENS = 0.00250
 
 class UsageTracker:
     """
