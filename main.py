@@ -36,6 +36,23 @@ def chat(request: ChatRequest):
             scenario = scenario_manager.get_scenario(session["scenario_id"])
             current_node = scenario.get_node(session["current_node_id"])
 
+            # 만약 현재 노드가 'final' 타입이면, 사용자가 안내 메시지를 보고 응답한 것이므로
+            # 바로 PA 노트 생성 로직을 실행합니다.
+            if current_node.get("type") == "final":
+                summary_response = summarize_conversation(session["history"])
+                if isinstance(summary_response, str):
+                    summary_text = summary_response
+                else:
+                    usage_tracker.update_usage(summary_response)
+                    summary_text = summary_response.text.strip()
+
+                usage_report = usage_tracker.get_summary_report()
+                final_text = f"{current_node['text']}\n\n[생성된 PA 노트 초안]\n{summary_text}\n\n---\n\n{usage_report}"
+                
+                # 세션 정리
+                user_sessions.pop(user_id, None)
+                return ChatResponse(next_question=final_text)
+
             session["history"].append(f"환자: {user_message}")
             # 사용자의 답변을 ID별로 기록 (조건 분기용)
             session["answers"][current_node["id"]] = user_message
@@ -110,19 +127,13 @@ def chat(request: ChatRequest):
             # --- 루프 끝 ---
 
             if next_node.get("type") == "final":
-                summary_response = summarize_conversation(session["history"])
-                if isinstance(summary_response, str):
-                    summary_text = summary_response
-                else:
-                    usage_tracker.update_usage(summary_response)
-                    summary_text = summary_response.text.strip()
-
-                usage_report = usage_tracker.get_summary_report()
-                final_text = f"{next_node['text']}\n\n[생성된 PA 노트 초안]\n{summary_text}\n\n---\n\n{usage_report}"
+                # PA 노트 생성 전, 사용자에게 안내 메시지를 먼저 보냅니다.
+                # 현재 노드를 final 노드로 설정하여, 다음 사용자 입력 시 PA 노트가 생성되도록 합니다.
+                user_sessions[user_id]["current_node_id"] = next_node_id
                 
-                # 세션 정리 (오류 방지를 위해 pop 사용)
-                user_sessions.pop(user_id, None)
-                return ChatResponse(next_question=final_text)
+                notice_text = "문진이 모두 완료되었습니다. 원장님께 내용을 전달중입니다..."
+                session["history"].append(f"챗봇: {notice_text}")
+                return ChatResponse(next_question=notice_text, options=[])
 
             user_sessions[user_id]["current_node_id"] = next_node_id
             
