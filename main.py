@@ -1,14 +1,12 @@
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-from scenario_engine import scenario_manager
-from gemini_client import generate_dynamic_question, summarize_conversation
-from usage_tracker import UsageTracker
-from typing import List
-import traceback  # [디버깅용] 상세한 오류 출력을 위해 추가
+# ... (imports remain the same) ...
+from kakao_integration import router as kakao_router
 
 app = FastAPI()
 
-# ... (이전 코드와 동일) ...
+# 카카오톡 연동 라우터 추가
+app.include_router(kakao_router)
+
+# ... (scenario_name_to_id and Pydantic models remain the same) ...
 scenario_name_to_id = {
     scenario.name: scenario_id
     for scenario_id, scenario in scenario_manager.scenarios.items()
@@ -20,14 +18,16 @@ class ChatResponse(BaseModel):
     next_question: str
     options: List[str] = []
 user_sessions = {}
-# ... (이전 코드와 동일) ...
+# ... (user_sessions remains the same) ...
 
-@app.post("/chat", response_model=ChatResponse)
-def chat(request: ChatRequest):
-    # [디버깅용] 함수 전체를 try-except로 감싸서 모든 오류를 포착
+
+def process_chat_message(user_id: str, user_message: str, clinic_name: str = None):
+    """
+    사용자 메시지를 처리하는 핵심 챗봇 로직.
+    Streamlit, 카카오톡 등 다양한 채널에서 재사용됩니다.
+    """
     try:
-        user_id = request.user_id
-        user_message = request.message.strip()
+        user_message = user_message.strip()
 
         # 1. 기존 대화가 있는지 확인
         if user_id in user_sessions:
@@ -51,7 +51,7 @@ def chat(request: ChatRequest):
                 
                 # 세션 정리
                 user_sessions.pop(user_id, None)
-                return ChatResponse(next_question=final_text)
+                return {"next_question": final_text, "options": []}
 
             session["history"].append(f"환자: {user_message}")
             # 사용자의 답변을 ID별로 기록 (조건 분기용)
@@ -71,29 +71,26 @@ def chat(request: ChatRequest):
                         break
 
                 if selected_option:
-                    # 옵션에 next_id가 있으면 그것을 사용 (분기용)
                     next_node_id = selected_option.get("next_id")
-                    # 옵션에 next_id가 없으면, 노드 레벨의 next_id를 사용 (단순 진행용)
                     if not next_node_id:
                         next_node_id = current_node.get("next_id")
 
                 if not next_node_id:
                     question_text = f"잘못된 선택입니다. 다시 선택해주세요.\n\n{current_node['text']}"
                     session["history"].append(f"챗봇: {question_text}")
-                    return ChatResponse(
-                        next_question=question_text,
-                        options=[opt["text"] for opt in current_node.get("options", [])]
-                    )
+                    return {
+                        "next_question": question_text,
+                        "options": [opt["text"] for opt in current_node.get("options", [])]
+                    }
             
             elif current_node.get("type") == "multiple_choice":
-                # multiple_choice는 답변 내용과 상관없이 정해진 다음 노드로 이동
                 next_node_id = current_node.get("next_id")
 
             elif current_node.get("type") == "free_text":
                 response = generate_dynamic_question(user_message, session["history"])
                 
                 if isinstance(response, str):
-                    return ChatResponse(next_question=response, options=[])
+                    return {"next_question": response, "options": []}
 
                 usage_tracker.update_usage(response)
                 dynamic_question = response.text.strip()
@@ -102,13 +99,10 @@ def chat(request: ChatRequest):
                 session["dynamic_question_pending"] = True
                 
                 session["history"].append(f"챗봇 (AI): {dynamic_question}")
-                return ChatResponse(next_question=dynamic_question, options=[])
+                return {"next_question": dynamic_question, "options": []}
 
-            # --- 조건 분기 노드 처리 루프 ---
-            # next_node가 표시할 텍스트가 없는 논리 노드(예: condition)인 경우,
-            # 실제 질문 노드가 나올 때까지 계속 다음 노드를 찾아나감.
             next_node = scenario.get_node(next_node_id)
-            while next_node.get("type") == "condition":
+            while next_node and next_node.get("type") == "condition":
                 condition_data = next_node.get("check_answer", {})
                 node_to_check = condition_data.get("node_id")
                 text_to_find = condition_data.get("contains")
@@ -121,19 +115,15 @@ def chat(request: ChatRequest):
                     next_node_id = next_node.get("next_id_if_false")
                 
                 if not next_node_id:
-                    raise HTTPException(status_code=500, detail=f"Condition node '{next_node['id']}' has no valid next node.")
+                    raise ValueError(f"Condition node '{next_node['id']}' has no valid next node.")
                 
                 next_node = scenario.get_node(next_node_id)
-            # --- 루프 끝 ---
 
             if next_node.get("type") == "final":
-                # PA 노트 생성 전, 사용자에게 안내 메시지를 먼저 보냅니다.
-                # 현재 노드를 final 노드로 설정하여, 다음 사용자 입력 시 PA 노트가 생성되도록 합니다.
                 user_sessions[user_id]["current_node_id"] = next_node_id
-                
                 notice_text = "문진이 모두 완료되었습니다. 원장님께 내용을 전달중입니다..."
                 session["history"].append(f"챗봇: {notice_text}")
-                return ChatResponse(next_question=notice_text, options=[])
+                return {"next_question": notice_text, "options": []}
 
             user_sessions[user_id]["current_node_id"] = next_node_id
             
@@ -141,7 +131,7 @@ def chat(request: ChatRequest):
             options = [opt["text"] for opt in next_node.get("options", [])]
             session["history"].append(f"챗봇: {question_text}")
 
-            return ChatResponse(next_question=question_text, options=options)
+            return {"next_question": question_text, "options": options}
 
         # 2. 새 대화 시작
         else:
@@ -154,7 +144,7 @@ def chat(request: ChatRequest):
                     "scenario_id": scenario_id,
                     "current_node_id": initial_node["id"],
                     "history": [],
-                    "answers": {}, # 답변 기록용 딕셔너리 초기화
+                    "answers": {},
                     "usage_tracker": UsageTracker()
                 }
                 
@@ -162,15 +152,26 @@ def chat(request: ChatRequest):
                 options = [opt["text"] for opt in initial_node.get("options", [])]
                 user_sessions[user_id]["history"].append(f"챗봇: {question_text}")
 
-                return ChatResponse(next_question=question_text, options=options)
+                return {"next_question": question_text, "options": options}
             else:
                 available_scenarios = list(scenario_name_to_id.keys())
-                return ChatResponse(
-                    next_question="안녕하세요! AI 문진 챗봇입니다. 어떤 증상으로 오셨나요?",
-                    options=available_scenarios
-                )
+                greeting = f"안녕하세요! {clinic_name or 'AI 문진 챗봇'}입니다. 어떤 증상으로 오셨나요?"
+                return {
+                    "next_question": greeting,
+                    "options": available_scenarios
+                }
     except Exception as e:
-        print("\n\n--- [오류 발생] ---")
+        print("\n\n--- [오류 발생 in process_chat_message] ---")
         traceback.print_exc()
         print("--- [오류 끝] ---\n\n")
-        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {e}")
+        # 사용자에게 보여줄 일반적인 오류 메시지
+        error_message = "죄송합니다, 시스템에 예상치 못한 오류가 발생했습니다. 대화를 다시 시작해주세요."
+        # 세션이 있다면 정리
+        user_sessions.pop(user_id, None)
+        return {"next_question": error_message, "options": ["시작"]}
+
+
+@app.post("/chat", response_model=ChatResponse)
+def chat(request: ChatRequest):
+    response_data = process_chat_message(request.user_id, request.message)
+    return ChatResponse(**response_data)
