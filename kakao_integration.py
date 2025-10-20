@@ -7,7 +7,7 @@ from typing import List, Dict, Any
 import crud
 from database import get_db
 # main.py에서 핵심 로직 함수를 가져옵니다.
-from main import process_chat_message
+from core_logic import process_chat_message
 
 # --- Pydantic 모델 정의 (카카오톡 스킬 API 형식에 맞춤) ---
 # ... (Pydantic models remain the same) ...
